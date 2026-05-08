@@ -1,3 +1,4 @@
+use crate::collision::Hitbox;
 use crate::movement::Velocity;
 use bevy::prelude::*;
 use rand::Rng;
@@ -73,6 +74,7 @@ fn spawn_enemies(
         },
         Transform::from_xyz(pos.x, pos.y, 0.0),
         Velocity(vel),
+        Hitbox(Vec2::splat(ENEMY_SIZE / 2.0)),
         Enemy,
     ));
 }

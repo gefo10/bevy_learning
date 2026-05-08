@@ -1,3 +1,4 @@
+use crate::collision::Hitbox;
 use crate::movement::{Velocity, apply_velocity};
 use bevy::prelude::*;
 
@@ -36,6 +37,7 @@ fn spawn_players(mut commands: Commands) {
             ..default()
         },
         Transform::from_xyz(0.0, 0.0, 0.0),
+        Hitbox(Vec2::splat(PLAYER_SIZE / 2.0)),
         DirectPlayer,
     ));
 
@@ -47,6 +49,7 @@ fn spawn_players(mut commands: Commands) {
         },
         Transform::default(),
         Velocity::default(),
+        Hitbox(Vec2::splat(PLAYER_SIZE / 2.0)),
         KineticPlayer,
     ));
 }
