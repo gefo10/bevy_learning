@@ -1,3 +1,4 @@
+use crate::game_state::GameState;
 use bevy::prelude::*;
 
 #[derive(Component, Default)]
@@ -7,7 +8,10 @@ pub struct MovementPlugin;
 
 impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, apply_velocity);
+        app.add_systems(
+            Update,
+            apply_velocity.run_if(in_state(GameState::Playing)),
+        );
     }
 }
 

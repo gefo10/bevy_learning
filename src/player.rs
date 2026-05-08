@@ -1,4 +1,5 @@
 use crate::collision::Hitbox;
+use crate::game_state::GameState;
 use crate::movement::{Velocity, apply_velocity};
 use bevy::prelude::*;
 
@@ -8,11 +9,16 @@ const ACCEL: f32 = 2000.0;
 const FRICTION: f32 = 4.0;
 const MAX_SPEED: f32 = 400.0;
 
+pub const MAX_HEALTH: i32 = 3;
+
 #[derive(Component)]
 pub struct DirectPlayer;
 
 #[derive(Component)]
 pub struct KineticPlayer;
+
+#[derive(Component)]
+pub struct Health(pub i32);
 
 pub struct PlayerPlugin;
 
@@ -24,7 +30,8 @@ impl Plugin for PlayerPlugin {
                 move_direct_player,
                 accelerate_kinetic_player.before(apply_velocity),
                 clamp_kinetic_player.after(apply_velocity),
-            ),
+            )
+                .run_if(in_state(GameState::Playing)),
         );
     }
 }
@@ -38,6 +45,7 @@ fn spawn_players(mut commands: Commands) {
         },
         Transform::from_xyz(0.0, 0.0, 0.0),
         Hitbox(Vec2::splat(PLAYER_SIZE / 2.0)),
+        Health(MAX_HEALTH),
         DirectPlayer,
     ));
 
@@ -50,6 +58,7 @@ fn spawn_players(mut commands: Commands) {
         Transform::default(),
         Velocity::default(),
         Hitbox(Vec2::splat(PLAYER_SIZE / 2.0)),
+        Health(MAX_HEALTH),
         KineticPlayer,
     ));
 }

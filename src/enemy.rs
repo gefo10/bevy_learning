@@ -1,4 +1,5 @@
 use crate::collision::Hitbox;
+use crate::game_state::GameState;
 use crate::movement::Velocity;
 use bevy::prelude::*;
 use rand::Rng;
@@ -21,7 +22,10 @@ impl Plugin for EnemyPlugin {
             SPAWN_INTERVAL_SECS,
             TimerMode::Repeating,
         )))
-        .add_systems(Update, (spawn_enemies, despawn_offscreen_enemies));
+        .add_systems(
+            Update,
+            (spawn_enemies, despawn_offscreen_enemies).run_if(in_state(GameState::Playing)),
+        );
     }
 }
 
