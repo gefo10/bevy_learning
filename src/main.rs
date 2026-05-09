@@ -6,6 +6,7 @@ mod health_ui;
 mod movement;
 mod player;
 mod projectile;
+mod props;
 mod score;
 
 use audio::GameAudioPlugin;
@@ -15,15 +16,27 @@ use enemy::EnemyPlugin;
 use game_state::GameStatePlugin;
 use health_ui::HealthUiPlugin;
 use movement::MovementPlugin;
-use player::PlayerPlugin;
+use player::{KineticPlayer, PlayerPlugin};
 use projectile::ProjectilePlugin;
+use props::PropsPlugin;
 use score::ScorePlugin;
 
-const CAMERA_BASE: Vec3 = Vec3::new(0.0, 900.0, 650.0);
+// Fixed offset from player to camera in world space
+const CAMERA_OFFSET: Vec3 = Vec3::new(0.0, 900.0, 650.0);
 
-#[derive(Resource, Default)]
-struct CameraShake {
+#[derive(Resource)]
+struct CameraState {
     trauma: f32,
+    smooth_pos: Vec3,
+}
+
+impl Default for CameraState {
+    fn default() -> Self {
+        CameraState {
+            trauma: 0.0,
+            smooth_pos: CAMERA_OFFSET,
+        }
+    }
 }
 
 fn main() {
@@ -39,19 +52,19 @@ fn main() {
             HealthUiPlugin,
             GameAudioPlugin,
             ProjectilePlugin,
+            PropsPlugin,
         ))
-        .init_resource::<CameraShake>()
+        .init_resource::<CameraState>()
         .add_systems(Startup, (spawn_camera, spawn_ground))
-        .add_systems(Update, camera_shake)
+        .add_systems(Update, camera_system)
         .run();
 }
 
 fn spawn_camera(mut commands: Commands) {
     commands.spawn((
         Camera3d::default(),
-        Transform::from_translation(CAMERA_BASE).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_translation(CAMERA_OFFSET).looking_at(Vec3::ZERO, Vec3::Y),
     ));
-    // Sun from above-front so characters are front-lit from the camera's perspective
     commands.spawn((
         DirectionalLight {
             illuminance: 15_000.0,
@@ -68,7 +81,7 @@ fn spawn_ground(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     commands.spawn((
-        Mesh3d(meshes.add(Plane3d::default().mesh().size(2000.0, 2000.0))),
+        Mesh3d(meshes.add(Plane3d::default().mesh().size(20_000.0, 20_000.0))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::srgb(0.1, 0.12, 0.15),
             unlit: true,
@@ -77,32 +90,35 @@ fn spawn_ground(
     ));
 }
 
-fn camera_shake(
+fn camera_system(
     time: Res<Time>,
-    mut shake: ResMut<CameraShake>,
-    mut events: MessageReader<PlayerHit>,
-    mut camera_q: Query<&mut Transform, With<Camera3d>>,
+    mut state: ResMut<CameraState>,
+    mut hit_events: MessageReader<PlayerHit>,
+    player_q: Query<&Transform, With<KineticPlayer>>,
+    mut camera_q: Query<&mut Transform, (With<Camera3d>, Without<KineticPlayer>)>,
 ) {
-    for _ in events.read() {
-        shake.trauma = (shake.trauma + 1.0).min(1.0);
+    for _ in hit_events.read() {
+        state.trauma = (state.trauma + 1.0).min(1.0);
     }
 
-    let Ok(mut transform) = camera_q.single_mut() else {
-        return;
-    };
+    let Ok(player) = player_q.single() else { return };
+    let Ok(mut cam) = camera_q.single_mut() else { return };
 
-    if shake.trauma <= 0.0 {
-        transform.translation = CAMERA_BASE;
-        return;
-    }
+    // Exponential smoothing toward player — framerate-independent lag
+    let alpha = 1.0 - (-5.0 * time.delta_secs()).exp();
+    let target = player.translation + CAMERA_OFFSET;
+    state.smooth_pos = state.smooth_pos.lerp(target, alpha);
 
-    shake.trauma = (shake.trauma - time.delta_secs() * 3.0).max(0.0);
-    let intensity = shake.trauma * shake.trauma;
+    // Trauma-squared shake decaying over ~0.33s
+    state.trauma = (state.trauma - time.delta_secs() * 3.0).max(0.0);
+    let intensity = state.trauma * state.trauma;
     let t = time.elapsed_secs();
-    let offset = Vec3::new(
+    let shake = Vec3::new(
         (t * 31.0).sin() * 35.0 * intensity,
         (t * 19.0).cos() * 15.0 * intensity,
         (t * 23.0).sin() * 20.0 * intensity,
     );
-    transform.translation = CAMERA_BASE + offset;
+
+    cam.translation = state.smooth_pos + shake;
+    cam.look_at(player.translation, Vec3::Y);
 }

@@ -9,9 +9,6 @@ const FRICTION: f32 = 4.0;
 const MAX_SPEED: f32 = 400.0;
 const CHARACTER_SCALE: f32 = 0.15;
 
-const WORLD_HALF_W: f32 = 640.0;
-const WORLD_HALF_H: f32 = 360.0;
-
 pub const MAX_HEALTH: i32 = 3;
 
 #[derive(Component)]
@@ -28,7 +25,6 @@ impl Plugin for PlayerPlugin {
             Update,
             (
                 accelerate_player.before(apply_velocity),
-                clamp_player.after(apply_velocity),
                 rotate_player,
             )
                 .run_if(in_state(GameState::Playing)),
@@ -72,26 +68,6 @@ fn accelerate_player(
         vel.0 += dir * ACCEL * time.delta_secs();
         vel.0 *= 1.0 - FRICTION * time.delta_secs();
         vel.0 = vel.0.clamp_length_max(MAX_SPEED);
-    }
-}
-
-fn clamp_player(mut q: Query<(&mut Transform, &mut Velocity), With<KineticPlayer>>) {
-    for (mut transform, mut vel) in &mut q {
-        let p = &mut transform.translation;
-        if p.x < -WORLD_HALF_W {
-            p.x = -WORLD_HALF_W;
-            vel.0.x = vel.0.x.max(0.0);
-        } else if p.x > WORLD_HALF_W {
-            p.x = WORLD_HALF_W;
-            vel.0.x = vel.0.x.min(0.0);
-        }
-        if p.z > WORLD_HALF_H {
-            p.z = WORLD_HALF_H;
-            vel.0.y = vel.0.y.max(0.0);
-        } else if p.z < -WORLD_HALF_H {
-            p.z = -WORLD_HALF_H;
-            vel.0.y = vel.0.y.min(0.0);
-        }
     }
 }
 
