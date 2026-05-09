@@ -8,6 +8,9 @@ const ENEMY_SIZE: f32 = 30.0;
 const ENEMY_SPEED: f32 = 200.0;
 const SPAWN_INTERVAL_SECS: f32 = 1.0;
 
+const WORLD_HALF_W: f32 = 640.0;
+const WORLD_HALF_H: f32 = 360.0;
+
 #[derive(Component)]
 pub struct Enemy;
 
@@ -33,50 +36,50 @@ fn spawn_enemies(
     mut commands: Commands,
     time: Res<Time>,
     mut spawn_timer: ResMut<SpawnTimer>,
-    windows: Query<&Window>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     spawn_timer.0.tick(time.delta());
     if !spawn_timer.0.just_finished() {
         return;
     }
 
-    let Ok(window) = windows.single() else { return };
-    let half_w = window.width() / 2.0;
-    let half_h = window.height() / 2.0;
-
     let mut rng = rand::rng();
+    let mesh = meshes.add(Rectangle::new(ENEMY_SIZE, ENEMY_SIZE));
+    let flat_rot = Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2);
 
-    // Pick an edge: 0=top, 1=bottom, 2=left, 3=right.
+    // Pick an edge: 0=top(-Z), 1=bottom(+Z), 2=left(-X), 3=right(+X)
     let (pos, vel) = match rng.random_range(0..4) {
         0 => (
-            Vec2::new(rng.random_range(-half_w..half_w), half_h + ENEMY_SIZE),
+            Vec3::new(rng.random_range(-WORLD_HALF_W..WORLD_HALF_W), 0.5, -WORLD_HALF_H - ENEMY_SIZE),
             Vec2::new(0.0, -ENEMY_SPEED),
         ),
         1 => (
-            Vec2::new(rng.random_range(-half_w..half_w), -half_h - ENEMY_SIZE),
+            Vec3::new(rng.random_range(-WORLD_HALF_W..WORLD_HALF_W), 0.5, WORLD_HALF_H + ENEMY_SIZE),
             Vec2::new(0.0, ENEMY_SPEED),
         ),
         2 => (
-            Vec2::new(-half_w - ENEMY_SIZE, rng.random_range(-half_h..half_h)),
+            Vec3::new(-WORLD_HALF_W - ENEMY_SIZE, 0.5, rng.random_range(-WORLD_HALF_H..WORLD_HALF_H)),
             Vec2::new(ENEMY_SPEED, 0.0),
         ),
         _ => (
-            Vec2::new(half_w + ENEMY_SIZE, rng.random_range(-half_h..half_h)),
+            Vec3::new(WORLD_HALF_W + ENEMY_SIZE, 0.5, rng.random_range(-WORLD_HALF_H..WORLD_HALF_H)),
             Vec2::new(-ENEMY_SPEED, 0.0),
         ),
     };
 
     commands.spawn((
-        Sprite {
-            color: Color::srgb(
+        Mesh3d(mesh),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::srgb(
                 rng.random_range(0.5..1.0),
                 rng.random_range(0.2..0.6),
                 rng.random_range(0.1..0.4),
             ),
-            custom_size: Some(Vec2::splat(ENEMY_SIZE)),
+            unlit: true,
             ..default()
-        },
-        Transform::from_xyz(pos.x, pos.y, 0.0),
+        })),
+        Transform::from_translation(pos).with_rotation(flat_rot),
         Velocity(vel),
         Hitbox(Vec2::splat(ENEMY_SIZE / 2.0)),
         Enemy,
@@ -85,16 +88,14 @@ fn spawn_enemies(
 
 fn despawn_offscreen_enemies(
     mut commands: Commands,
-    windows: Query<&Window>,
     enemies: Query<(Entity, &Transform), With<Enemy>>,
 ) {
-    let Ok(window) = windows.single() else { return };
-    let limit_x = window.width() / 2.0 + ENEMY_SIZE * 2.0;
-    let limit_y = window.height() / 2.0 + ENEMY_SIZE * 2.0;
+    let limit_x = WORLD_HALF_W + ENEMY_SIZE * 2.0;
+    let limit_z = WORLD_HALF_H + ENEMY_SIZE * 2.0;
 
     for (entity, transform) in &enemies {
         let p = transform.translation;
-        if p.x.abs() > limit_x || p.y.abs() > limit_y {
+        if p.x.abs() > limit_x || p.z.abs() > limit_z {
             commands.entity(entity).despawn();
         }
     }

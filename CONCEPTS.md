@@ -447,13 +447,59 @@ On game-over → input → reset state:
 
 ---
 
-## 19. What's next
+## 19. UI driven by component state (health bar)
+
+The score bar taught: *resource → text*.
+The health bar teaches: *component on a game entity → BackgroundColor on UI nodes*.
+
+Key differences from ScoreText:
+- Data source is `Query<&Health, With<DirectPlayer>>` (a component), not `Res<Score>`.
+- UI state is a `BackgroundColor` colour, not a string. The system runs every frame and overwrites it.
+- Each pip is a standalone absolutely-positioned `Node` entity (no parent container needed).
+
+### Bevy 0.18 gotchas discovered
+- `BackgroundColor` is a **required component** of `Node` — never include it in the same spawn bundle as `Node` (duplicate required component → fails the `Bundle` check at compile time).
+- `BorderRadius` is a **field inside `Node`** (`border_radius: BorderRadius::all(...)`), not a separate component.
+
+---
+
+## 20. Audio
+
+```rust
+fn load_sounds(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.insert_resource(SoundHandles {
+        kill: asset_server.load("audio/enemy_killed.ogg"),
+    });
+}
+
+fn play_kill_sound(
+    mut commands: Commands,
+    handles: Res<SoundHandles>,
+    mut events: MessageReader<EnemyKilled>,
+) {
+    for _ in events.read() {
+        commands.spawn((
+            AudioPlayer::<AudioSource>::new(handles.kill.clone()),
+            PlaybackSettings::DESPAWN,
+        ));
+    }
+}
+```
+
+- `asset_server.load(path)` returns a `Handle<T>` immediately; bytes stream in the background.
+- Store handles in a `Resource` so the asset stays loaded and you're not calling `load()` on every kill.
+- Cloning a `Handle` is cheap — it's just a ref-counted ID.
+- `AudioPlayer` + `PlaybackSettings::DESPAWN` = spawn once, play once, entity auto-removed.
+- Sound files live in `assets/audio/`. Bevy resolves `"audio/foo.ogg"` relative to that folder.
+
+---
+
+## 21. What's next
 
 Concepts seen but not yet used in this project:
+- **Sprites & animation** — `Sprite` with an image handle, `TextureAtlas` for sprite sheets, frame stepping via Timer.
 - **Hot-reload assets** (turn it on for fast iteration).
 - **`FixedUpdate`** for deterministic physics.
-- **Audio** (`AudioPlayer`).
-- **Sprite atlases** (`TextureAtlas`) for animation.
 - **Tilemaps** (`bevy_ecs_tilemap`).
 - **Physics** (Avian2D for idiomatic Bevy, Rapier2D as alternative).
 - **System sets** for grouping and ordering many systems together.

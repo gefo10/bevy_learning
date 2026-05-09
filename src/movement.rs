@@ -18,6 +18,7 @@ impl Plugin for MovementPlugin {
 pub fn apply_velocity(time: Res<Time>, mut q: Query<(&Velocity, &mut Transform)>) {
     for (vel, mut transform) in &mut q {
         transform.translation.x += vel.0.x * time.delta_secs();
-        transform.translation.y += vel.0.y * time.delta_secs();
+        // vel.0.y maps to -Z: positive Y (screen up) = negative Z (away from camera)
+        transform.translation.z -= vel.0.y * time.delta_secs();
     }
 }

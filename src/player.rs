@@ -9,6 +9,10 @@ const ACCEL: f32 = 2000.0;
 const FRICTION: f32 = 4.0;
 const MAX_SPEED: f32 = 400.0;
 
+// World bounds (half-extents in 3D world units)
+const WORLD_HALF_W: f32 = 640.0;
+const WORLD_HALF_H: f32 = 360.0;
+
 pub const MAX_HEALTH: i32 = 3;
 
 #[derive(Component)]
@@ -36,26 +40,39 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-fn spawn_players(mut commands: Commands) {
+fn flat_transform(x: f32, z: f32) -> Transform {
+    Transform::from_xyz(x, 0.5, z)
+        .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
+}
+
+fn spawn_players(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let mesh = meshes.add(Rectangle::new(PLAYER_SIZE, PLAYER_SIZE));
+
     commands.spawn((
-        Sprite {
-            color: Color::srgb(0.3, 0.7, 0.9),
-            custom_size: Some(Vec2::splat(PLAYER_SIZE)),
+        Mesh3d(mesh.clone()),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::srgb(0.3, 0.7, 0.9),
+            unlit: true,
             ..default()
-        },
-        Transform::from_xyz(0.0, 0.0, 0.0),
+        })),
+        flat_transform(0.0, 0.0),
         Hitbox(Vec2::splat(PLAYER_SIZE / 2.0)),
         Health(MAX_HEALTH),
         DirectPlayer,
     ));
 
     commands.spawn((
-        Sprite {
-            color: Color::srgb(0.8, 0.2, 0.5),
-            custom_size: Some(Vec2::splat(PLAYER_SIZE)),
+        Mesh3d(mesh),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::srgb(0.8, 0.2, 0.5),
+            unlit: true,
             ..default()
-        },
-        Transform::default(),
+        })),
+        flat_transform(0.0, 0.0),
         Velocity::default(),
         Hitbox(Vec2::splat(PLAYER_SIZE / 2.0)),
         Health(MAX_HEALTH),
@@ -66,7 +83,6 @@ fn spawn_players(mut commands: Commands) {
 fn move_direct_player(
     keys: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
-    windows: Query<&Window>,
     mut players: Query<&mut Transform, With<DirectPlayer>>,
 ) {
     let mut dir = Vec2::ZERO;
@@ -84,15 +100,11 @@ fn move_direct_player(
     }
     let dir = dir.normalize_or_zero();
 
-    let Ok(window) = windows.single() else { return };
-    let half_w = window.width() / 2.0 - PLAYER_SIZE / 2.0;
-    let half_h = window.height() / 2.0 - PLAYER_SIZE / 2.0;
-
     for mut transform in &mut players {
         transform.translation.x += dir.x * PLAYER_SPEED * time.delta_secs();
-        transform.translation.y += dir.y * PLAYER_SPEED * time.delta_secs();
-        transform.translation.x = transform.translation.x.clamp(-half_w, half_w);
-        transform.translation.y = transform.translation.y.clamp(-half_h, half_h);
+        transform.translation.z -= dir.y * PLAYER_SPEED * time.delta_secs();
+        transform.translation.x = transform.translation.x.clamp(-WORLD_HALF_W, WORLD_HALF_W);
+        transform.translation.z = transform.translation.z.clamp(-WORLD_HALF_H, WORLD_HALF_H);
     }
 }
 
@@ -124,27 +136,23 @@ fn accelerate_kinetic_player(
 }
 
 fn clamp_kinetic_player(
-    windows: Query<&Window>,
     mut q: Query<(&mut Transform, &mut Velocity), With<KineticPlayer>>,
 ) {
-    let Ok(window) = windows.single() else { return };
-    let half_w = window.width() / 2.0 - PLAYER_SIZE / 2.0;
-    let half_h = window.height() / 2.0 - PLAYER_SIZE / 2.0;
-
     for (mut transform, mut vel) in &mut q {
         let p = &mut transform.translation;
-        if p.x < -half_w {
-            p.x = -half_w;
+        if p.x < -WORLD_HALF_W {
+            p.x = -WORLD_HALF_W;
             vel.0.x = vel.0.x.max(0.0);
-        } else if p.x > half_w {
-            p.x = half_w;
+        } else if p.x > WORLD_HALF_W {
+            p.x = WORLD_HALF_W;
             vel.0.x = vel.0.x.min(0.0);
         }
-        if p.y < -half_h {
-            p.y = -half_h;
+        // +Z = screen bottom = 2D -Y; vel.0.y > 0 decreases Z (moves up)
+        if p.z > WORLD_HALF_H {
+            p.z = WORLD_HALF_H;
             vel.0.y = vel.0.y.max(0.0);
-        } else if p.y > half_h {
-            p.y = half_h;
+        } else if p.z < -WORLD_HALF_H {
+            p.z = -WORLD_HALF_H;
             vel.0.y = vel.0.y.min(0.0);
         }
     }

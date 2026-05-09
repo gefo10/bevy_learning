@@ -32,7 +32,7 @@ fn detect_player_enemy_collisions(
 ) {
     for (p_transform, p_hitbox, mut p_health) in &mut players {
         for (enemy_id, e_transform, e_hitbox) in &enemies {
-            let delta = p_transform.translation.truncate() - e_transform.translation.truncate();
+            let delta = p_transform.translation.xz() - e_transform.translation.xz();
             let combined = p_hitbox.0 + e_hitbox.0;
             if delta.x.abs() < combined.x && delta.y.abs() < combined.y {
                 commands.entity(enemy_id).despawn();
