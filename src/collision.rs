@@ -1,6 +1,6 @@
 use crate::enemy::Enemy;
 use crate::game_state::GameState;
-use crate::player::{DirectPlayer, Health, KineticPlayer};
+use crate::player::{Health, KineticPlayer};
 use bevy::prelude::*;
 
 #[derive(Component)]
@@ -24,10 +24,7 @@ fn detect_player_enemy_collisions(
     mut commands: Commands,
     mut events: MessageWriter<EnemyKilled>,
     mut next_state: ResMut<NextState<GameState>>,
-    mut players: Query<
-        (&Transform, &Hitbox, &mut Health),
-        Or<(With<DirectPlayer>, With<KineticPlayer>)>,
-    >,
+    mut players: Query<(&Transform, &Hitbox, &mut Health), With<KineticPlayer>>,
     enemies: Query<(Entity, &Transform, &Hitbox), With<Enemy>>,
 ) {
     for (p_transform, p_hitbox, mut p_health) in &mut players {

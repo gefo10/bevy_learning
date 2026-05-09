@@ -1,6 +1,6 @@
 use crate::enemy::Enemy;
 use crate::movement::Velocity;
-use crate::player::{DirectPlayer, Health, KineticPlayer, MAX_HEALTH};
+use crate::player::{Health, KineticPlayer, MAX_HEALTH};
 use crate::score::Score;
 use bevy::prelude::*;
 
@@ -57,10 +57,7 @@ fn restart(
     mut commands: Commands,
     mut score: ResMut<Score>,
     enemies: Query<Entity, With<Enemy>>,
-    mut players: Query<
-        (&mut Transform, &mut Health, Option<&mut Velocity>),
-        Or<(With<DirectPlayer>, With<KineticPlayer>)>,
-    >,
+    mut players: Query<(&mut Transform, &mut Health, &mut Velocity), With<KineticPlayer>>,
 ) {
     if !keys.just_pressed(KeyCode::Space) {
         return;
@@ -72,12 +69,10 @@ fn restart(
         commands.entity(e).despawn();
     }
 
-    for (mut t, mut h, vel) in &mut players {
+    for (mut t, mut h, mut v) in &mut players {
         t.translation = Vec3::ZERO;
         h.0 = MAX_HEALTH;
-        if let Some(mut v) = vel {
-            v.0 = Vec2::ZERO;
-        }
+        v.0 = Vec2::ZERO;
     }
 
     next_state.set(GameState::Playing);
