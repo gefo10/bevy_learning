@@ -9,11 +9,16 @@ pub struct Hitbox(pub Vec2); // half-extents (width/2, height/2)
 #[derive(Message)]
 pub struct EnemyKilled;
 
+#[derive(Message)]
+pub struct PlayerHit;
+
 pub struct CollisionPlugin;
 
 impl Plugin for CollisionPlugin {
     fn build(&self, app: &mut App) {
-        app.add_message::<EnemyKilled>().add_systems(
+        app.add_message::<EnemyKilled>()
+            .add_message::<PlayerHit>()
+            .add_systems(
             Update,
             detect_player_enemy_collisions.run_if(in_state(GameState::Playing)),
         );
@@ -22,7 +27,8 @@ impl Plugin for CollisionPlugin {
 
 fn detect_player_enemy_collisions(
     mut commands: Commands,
-    mut events: MessageWriter<EnemyKilled>,
+    mut kill_events: MessageWriter<EnemyKilled>,
+    mut hit_events: MessageWriter<PlayerHit>,
     mut next_state: ResMut<NextState<GameState>>,
     mut players: Query<(&Transform, &Hitbox, &mut Health), With<KineticPlayer>>,
     enemies: Query<(Entity, &Transform, &Hitbox), With<Enemy>>,
@@ -33,7 +39,8 @@ fn detect_player_enemy_collisions(
             let combined = p_hitbox.0 + e_hitbox.0;
             if delta.x.abs() < combined.x && delta.y.abs() < combined.y {
                 commands.entity(enemy_id).despawn();
-                events.write(EnemyKilled);
+                kill_events.write(EnemyKilled);
+                hit_events.write(PlayerHit);
                 p_health.0 -= 1;
                 if p_health.0 <= 0 {
                     next_state.set(GameState::GameOver);

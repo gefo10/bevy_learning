@@ -27,7 +27,7 @@ impl Plugin for GameStatePlugin {
 
 fn show_game_over_text(mut commands: Commands) {
     commands.spawn((
-        Text::new("GAME OVER\nPress SPACE to restart"),
+        Text::new("GAME OVER\nPress R to restart"),
         TextFont {
             font_size: 48.0,
             ..default()
@@ -59,7 +59,7 @@ fn restart(
     enemies: Query<Entity, With<Enemy>>,
     mut players: Query<(&mut Transform, &mut Health, &mut Velocity), With<KineticPlayer>>,
 ) {
-    if !keys.just_pressed(KeyCode::Space) {
+    if !keys.just_pressed(KeyCode::KeyR) {
         return;
     }
 
