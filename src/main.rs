@@ -39,6 +39,15 @@ fn spawn_camera(mut commands: Commands) {
         Camera3d::default(),
         Transform::from_xyz(0.0, 900.0, 650.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
+    // Sun from above-front so characters are front-lit from the camera's perspective
+    commands.spawn((
+        DirectionalLight {
+            illuminance: 15_000.0,
+            shadows_enabled: false,
+            ..default()
+        },
+        Transform::from_xyz(0.0, 1.0, 1.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
 }
 
 fn spawn_ground(

@@ -8,8 +8,8 @@ const PLAYER_SPEED: f32 = 400.0;
 const ACCEL: f32 = 2000.0;
 const FRICTION: f32 = 4.0;
 const MAX_SPEED: f32 = 400.0;
+const CHARACTER_SCALE: f32 = 0.15;
 
-// World bounds (half-extents in 3D world units)
 const WORLD_HALF_W: f32 = 640.0;
 const WORLD_HALF_H: f32 = 360.0;
 
@@ -40,39 +40,24 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-fn flat_transform(x: f32, z: f32) -> Transform {
-    Transform::from_xyz(x, 0.5, z)
-        .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
+fn character_transform(x: f32, z: f32) -> Transform {
+    Transform::from_xyz(x, 0.0, z).with_scale(Vec3::splat(CHARACTER_SCALE))
 }
 
-fn spawn_players(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    let mesh = meshes.add(Rectangle::new(PLAYER_SIZE, PLAYER_SIZE));
+fn spawn_players(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let scene: Handle<Scene> = asset_server.load("characters/characterMedium.glb#Scene0");
 
     commands.spawn((
-        Mesh3d(mesh.clone()),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgb(0.3, 0.7, 0.9),
-            unlit: true,
-            ..default()
-        })),
-        flat_transform(0.0, 0.0),
+        SceneRoot(scene.clone()),
+        character_transform(-40.0, 0.0),
         Hitbox(Vec2::splat(PLAYER_SIZE / 2.0)),
         Health(MAX_HEALTH),
         DirectPlayer,
     ));
 
     commands.spawn((
-        Mesh3d(mesh),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgb(0.8, 0.2, 0.5),
-            unlit: true,
-            ..default()
-        })),
-        flat_transform(0.0, 0.0),
+        SceneRoot(scene),
+        character_transform(40.0, 0.0),
         Velocity::default(),
         Hitbox(Vec2::splat(PLAYER_SIZE / 2.0)),
         Health(MAX_HEALTH),
@@ -135,9 +120,7 @@ fn accelerate_kinetic_player(
     }
 }
 
-fn clamp_kinetic_player(
-    mut q: Query<(&mut Transform, &mut Velocity), With<KineticPlayer>>,
-) {
+fn clamp_kinetic_player(mut q: Query<(&mut Transform, &mut Velocity), With<KineticPlayer>>) {
     for (mut transform, mut vel) in &mut q {
         let p = &mut transform.translation;
         if p.x < -WORLD_HALF_W {
@@ -147,7 +130,6 @@ fn clamp_kinetic_player(
             p.x = WORLD_HALF_W;
             vel.0.x = vel.0.x.min(0.0);
         }
-        // +Z = screen bottom = 2D -Y; vel.0.y > 0 decreases Z (moves up)
         if p.z > WORLD_HALF_H {
             p.z = WORLD_HALF_H;
             vel.0.y = vel.0.y.max(0.0);
