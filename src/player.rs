@@ -30,7 +30,6 @@ impl Plugin for PlayerPlugin {
                 accelerate_player.before(apply_velocity),
                 clamp_player.after(apply_velocity),
                 rotate_player,
-                setup_animation,
             )
                 .run_if(in_state(GameState::Playing)),
         );
@@ -111,22 +110,3 @@ fn rotate_player(
     }
 }
 
-fn setup_animation(
-    mut commands: Commands,
-    mut players: Query<(Entity, &mut AnimationPlayer), Added<AnimationPlayer>>,
-    mut graphs: ResMut<Assets<AnimationGraph>>,
-    asset_server: Res<AssetServer>,
-) {
-    for (entity, mut player) in &mut players {
-        let mut graph = AnimationGraph::new();
-        let node = graph.add_clip(
-            asset_server.load("characters/characterMedium.glb#Animation0"),
-            1.0,
-            graph.root,
-        );
-        commands
-            .entity(entity)
-            .insert(AnimationGraphHandle(graphs.add(graph)));
-        player.play(node).repeat();
-    }
-}

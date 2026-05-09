@@ -31,6 +31,7 @@ fn spawn_health_ui(mut commands: Commands) {
                 border_radius: BorderRadius::all(Val::Px(3.0)),
                 ..default()
             },
+            BackgroundColor(EMPTY),
             HealthPip(i),
         ));
     }

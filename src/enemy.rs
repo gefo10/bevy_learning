@@ -45,25 +45,25 @@ fn spawn_enemies(
     }
 
     let mut rng = rand::rng();
-    let mesh = meshes.add(Rectangle::new(ENEMY_SIZE, ENEMY_SIZE));
-    let flat_rot = Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2);
+    let mesh = meshes.add(Cuboid::new(ENEMY_SIZE, ENEMY_SIZE, ENEMY_SIZE));
+    let half = ENEMY_SIZE / 2.0;
 
     // Pick an edge: 0=top(-Z), 1=bottom(+Z), 2=left(-X), 3=right(+X)
     let (pos, vel) = match rng.random_range(0..4) {
         0 => (
-            Vec3::new(rng.random_range(-WORLD_HALF_W..WORLD_HALF_W), 0.5, -WORLD_HALF_H - ENEMY_SIZE),
+            Vec3::new(rng.random_range(-WORLD_HALF_W..WORLD_HALF_W), half, -WORLD_HALF_H - ENEMY_SIZE),
             Vec2::new(0.0, -ENEMY_SPEED),
         ),
         1 => (
-            Vec3::new(rng.random_range(-WORLD_HALF_W..WORLD_HALF_W), 0.5, WORLD_HALF_H + ENEMY_SIZE),
+            Vec3::new(rng.random_range(-WORLD_HALF_W..WORLD_HALF_W), half, WORLD_HALF_H + ENEMY_SIZE),
             Vec2::new(0.0, ENEMY_SPEED),
         ),
         2 => (
-            Vec3::new(-WORLD_HALF_W - ENEMY_SIZE, 0.5, rng.random_range(-WORLD_HALF_H..WORLD_HALF_H)),
+            Vec3::new(-WORLD_HALF_W - ENEMY_SIZE, half, rng.random_range(-WORLD_HALF_H..WORLD_HALF_H)),
             Vec2::new(ENEMY_SPEED, 0.0),
         ),
         _ => (
-            Vec3::new(WORLD_HALF_W + ENEMY_SIZE, 0.5, rng.random_range(-WORLD_HALF_H..WORLD_HALF_H)),
+            Vec3::new(WORLD_HALF_W + ENEMY_SIZE, half, rng.random_range(-WORLD_HALF_H..WORLD_HALF_H)),
             Vec2::new(-ENEMY_SPEED, 0.0),
         ),
     };
@@ -76,10 +76,9 @@ fn spawn_enemies(
                 rng.random_range(0.2..0.6),
                 rng.random_range(0.1..0.4),
             ),
-            unlit: true,
             ..default()
         })),
-        Transform::from_translation(pos).with_rotation(flat_rot),
+        Transform::from_translation(pos),
         Velocity(vel),
         Hitbox(Vec2::splat(ENEMY_SIZE / 2.0)),
         Enemy,
